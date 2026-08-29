@@ -101,9 +101,7 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 });
 
 // Vercel expects a default export function
-export default async function handler(req: any, res: any) {
-  return app(req, res);
-}
+export default app;
 
 // Disable Vercel's default body parser so Express can handle it properly (prevents hanging)
 export const config = {
