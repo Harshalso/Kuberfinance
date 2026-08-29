@@ -3,27 +3,9 @@ import { Link } from 'react-router-dom';
 import { ArrowRight, Calculator, PieChart, Building2, FileText, CheckCircle2, TrendingUp, ShieldCheck, Clock } from 'lucide-react';
 import { Button } from '@/src/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/src/components/ui/card';
-import { getActiveOffers } from '@/src/lib/supabase/offers';
-import type { Offer } from '@/src/types';
+import { HotOffers } from '@/src/components/home/hot-offers';
 
 export function Home() {
-  const [offers, setOffers] = useState<Offer[]>([]);
-  const [loadingOffers, setLoadingOffers] = useState(true);
-
-  useEffect(() => {
-    async function loadOffers() {
-      try {
-        const data = await getActiveOffers();
-        setOffers(data);
-      } catch (err) {
-        console.error("Failed to load offers:", err);
-      } finally {
-        setLoadingOffers(false);
-      }
-    }
-    loadOffers();
-  }, []);
-
   return (
     <div className="flex flex-col w-full">
       {/* Hero Section */}
@@ -53,72 +35,7 @@ export function Home() {
       </section>
 
       {/* Hot Offers Section */}
-      <section className="py-20 bg-slate-50">
-        <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between mb-12">
-            <div>
-              <h2 className="text-3xl font-bold tracking-tight text-slate-900">Hot Offers</h2>
-              <p className="text-slate-600 mt-2">Latest exclusive bank rates and policy updates.</p>
-            </div>
-            <Button asChild variant="ghost" className="hidden sm:flex">
-              <Link to="/offers">View All <ArrowRight className="ml-2 w-4 h-4" /></Link>
-            </Button>
-          </div>
-
-          {loadingOffers ? (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {[1, 2, 3].map(i => (
-                <div key={i} className="h-64 rounded-xl border bg-slate-100 animate-pulse"></div>
-              ))}
-            </div>
-          ) : offers.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {offers.map((offer) => (
-                <Card key={offer.id} className="overflow-hidden hover:border-primary/50 hover:shadow-md transition-all group flex flex-col">
-                  {offer.image_url && (
-                    <div className="h-48 w-full overflow-hidden bg-slate-100 relative">
-                      <img src={offer.image_url} alt={offer.title} className="w-full h-full object-cover transition-transform group-hover:scale-105" />
-                      <div className="absolute top-4 right-4 bg-primary text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider shadow-sm">
-                        {offer.offer_type || 'Promo'}
-                      </div>
-                    </div>
-                  )}
-                  <CardHeader>
-                    {!offer.image_url && (
-                      <div className="inline-flex w-max rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary mb-2 uppercase tracking-wider">
-                        {offer.offer_type || 'Update'}
-                      </div>
-                    )}
-                    <CardTitle className="text-xl leading-tight">{offer.title}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="flex-1">
-                    <p className="text-sm text-slate-600 line-clamp-3">{offer.description}</p>
-                    {offer.end_date && (
-                      <div className="flex items-center text-xs text-slate-500 mt-4 font-medium">
-                        <Clock className="w-3.5 h-3.5 mr-1" />
-                        Valid until {new Date(offer.end_date).toLocaleDateString()}
-                      </div>
-                    )}
-                  </CardContent>
-                  <CardFooter className="border-t bg-slate-50/50 pt-4">
-                    <Button variant="ghost" className="w-full text-primary hover:text-primary hover:bg-primary/5">
-                      View Details
-                    </Button>
-                  </CardFooter>
-                </Card>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-12 bg-white rounded-xl border border-dashed">
-              <p className="text-slate-500">No active offers available right now. Check back later.</p>
-            </div>
-          )}
-          
-          <Button asChild variant="outline" className="w-full mt-6 sm:hidden">
-            <Link to="/offers">View All Offers</Link>
-          </Button>
-        </div>
-      </section>
+      <HotOffers />
 
       {/* Four Primary Tools */}
       <section className="py-20 bg-white">

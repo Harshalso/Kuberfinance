@@ -1,9 +1,9 @@
-import { useState, useMemo } from 'react';
-import { useForm, useWatch } from 'react-hook-form';
+import { useState, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, Legend, CartesianGrid } from 'recharts';
-import { Save, RotateCcw, Info, CheckCircle2, TrendingDown, Clock } from 'lucide-react';
+import { Save, RotateCcw, Info, CheckCircle2, TrendingDown, Clock, Calculator } from 'lucide-react';
 import { useAuth } from '@/src/components/auth/auth-provider';
 import { saveCalculation } from '@/src/lib/supabase/calculations';
 import { calculatePartPayment } from '@/src/lib/calculators/partPayment';
@@ -37,30 +37,40 @@ export function PartPaymentCalculator() {
   const { user } = useAuth();
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState("");
+  const [results, setResults] = useState<ReturnType<typeof calculatePartPayment> | null>(null);
 
-  const { register, control, reset, formState: { errors } } = useForm<PartPaymentFormValues>({
+  const { register, handleSubmit, reset, getValues, formState: { errors } } = useForm<PartPaymentFormValues>({
     // @ts-expect-error - Zod coerce causes type mismatch with hook-form input types
     resolver: zodResolver(partPaymentSchema),
     defaultValues: DEFAULT_VALUES,
-    mode: 'onChange'
   });
 
-  const values = useWatch({ control });
-  const parsed = partPaymentSchema.safeParse(values);
-
-  const results = useMemo(() => {
-    if (parsed.success && parsed.data.partPayment <= parsed.data.outstandingPrincipal) {
-      try {
-        return calculatePartPayment(parsed.data);
-      } catch (e) {
-        return null;
-      }
+  useEffect(() => {
+    // Initial calculation
+    try {
+      setResults(calculatePartPayment(DEFAULT_VALUES));
+    } catch (e) {
+      setResults(null);
     }
-    return null;
-  }, [parsed.success, parsed.data]);
+  }, []);
+
+  const onCalculate = (data: PartPaymentFormValues) => {
+    if (data.partPayment <= data.outstandingPrincipal) {
+      try {
+        setResults(calculatePartPayment(data));
+      } catch (e) {
+        setResults(null);
+      }
+    } else {
+      setResults(null);
+    }
+  };
 
   const handleSave = async () => {
+    const currentValues = getValues();
+    const parsed = partPaymentSchema.safeParse(currentValues);
     if (!user || !results || !parsed.success) return;
+    
     try {
       setSaving(true);
       await saveCalculation(user.id, 'Part Payment', parsed.data, results);
@@ -106,84 +116,88 @@ export function PartPaymentCalculator() {
                 <CardDescription>Enter your existing loan information.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="outstandingPrincipal">Outstanding Principal (₹)</Label>
-                  <Input 
-                    id="outstandingPrincipal" 
-                    type="number"
-                    {...register('outstandingPrincipal')}
-                  />
-                  {errors.outstandingPrincipal && <p className="text-xs text-destructive">{errors.outstandingPrincipal.message}</p>}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="interestRate">Interest Rate (%)</Label>
-                  <Input 
-                    id="interestRate" 
-                    type="number"
-                    step="0.1"
-                    {...register('interestRate')}
-                  />
-                  {errors.interestRate && <p className="text-xs text-destructive">{errors.interestRate.message}</p>}
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
+                <form onSubmit={handleSubmit(onCalculate as any)} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="remainingTenure">Remaining (Months)</Label>
+                    <Label htmlFor="outstandingPrincipal">Outstanding Principal (₹)</Label>
                     <Input 
-                      id="remainingTenure" 
+                      id="outstandingPrincipal" 
                       type="number"
-                      {...register('remainingTenure')}
+                      {...register('outstandingPrincipal')}
                     />
-                    {errors.remainingTenure && <p className="text-xs text-destructive">{errors.remainingTenure.message}</p>}
+                    {errors.outstandingPrincipal && <p className="text-xs text-destructive">{errors.outstandingPrincipal.message}</p>}
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="currentEmi">Current EMI (Optional)</Label>
-                    <Input 
-                      id="currentEmi" 
-                      type="number"
-                      {...register('currentEmi')}
-                    />
-                  </div>
-                </div>
 
-                <div className="pt-4 mt-4 border-t border-slate-100">
                   <div className="space-y-2">
-                    <Label htmlFor="partPayment" className="text-primary font-bold">Part Payment Amount (₹)</Label>
+                    <Label htmlFor="interestRate">Interest Rate (%)</Label>
                     <Input 
-                      id="partPayment" 
+                      id="interestRate" 
                       type="number"
-                      className="border-primary ring-primary"
-                      {...register('partPayment')}
+                      step="0.1"
+                      {...register('interestRate')}
                     />
-                    {errors.partPayment && <p className="text-xs text-destructive">{errors.partPayment.message}</p>}
-                    {parsed.success && parsed.data.partPayment > parsed.data.outstandingPrincipal && (
-                       <p className="text-xs text-destructive">Part payment cannot exceed outstanding principal.</p>
+                    {errors.interestRate && <p className="text-xs text-destructive">{errors.interestRate.message}</p>}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="remainingTenure">Remaining (Months)</Label>
+                      <Input 
+                        id="remainingTenure" 
+                        type="number"
+                        {...register('remainingTenure')}
+                      />
+                      {errors.remainingTenure && <p className="text-xs text-destructive">{errors.remainingTenure.message}</p>}
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="currentEmi">Current EMI (Optional)</Label>
+                      <Input 
+                        id="currentEmi" 
+                        type="number"
+                        {...register('currentEmi')}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="pt-4 mt-4 border-t border-slate-100">
+                    <div className="space-y-2">
+                      <Label htmlFor="partPayment" className="text-primary font-bold">Part Payment Amount (₹)</Label>
+                      <Input 
+                        id="partPayment" 
+                        type="number"
+                        className="border-primary ring-primary"
+                        {...register('partPayment')}
+                      />
+                      {errors.partPayment && <p className="text-xs text-destructive">{errors.partPayment.message}</p>}
+                      {/* Note: Validation for partPayment > principal is handled inside onCalculate, but ideally through Zod superRefine. We'll handle it gracefully by just hiding results. */}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-3 pt-6 border-t mt-6">
+                    <Button type="submit" className="w-full font-bold">
+                      <Calculator className="w-4 h-4 mr-2" /> Calculate Analysis
+                    </Button>
+
+                    <Button type="button" variant="outline" onClick={() => { reset(DEFAULT_VALUES); onCalculate(DEFAULT_VALUES); }} className="w-full">
+                      <RotateCcw className="w-4 h-4 mr-2" /> Reset
+                    </Button>
+                    
+                    {user && (
+                      <Button type="button" variant="secondary" onClick={handleSave} disabled={!results || saving} className="w-full">
+                        {saving ? "Saving..." : <><Save className="w-4 h-4 mr-2" /> Save to Dashboard</>}
+                      </Button>
+                    )}
+                    {saveMessage && (
+                      <div className="text-sm font-medium flex items-center justify-center text-primary mt-1">
+                        <CheckCircle2 className="w-4 h-4 mr-1" /> {saveMessage}
+                      </div>
+                    )}
+                    {!user && (
+                      <p className="text-xs text-slate-500 text-center flex items-center justify-center mt-2">
+                        <Info className="w-3.5 h-3.5 mr-1" /> Sign in to save calculations
+                      </p>
                     )}
                   </div>
-                </div>
-
-                <div className="flex flex-col gap-3 pt-6 border-t mt-6">
-                  <Button variant="outline" onClick={() => reset(DEFAULT_VALUES)} className="w-full">
-                    <RotateCcw className="w-4 h-4 mr-2" /> Reset
-                  </Button>
-                  
-                  {user && (
-                    <Button onClick={handleSave} disabled={!results || saving} className="w-full">
-                      {saving ? "Saving..." : <><Save className="w-4 h-4 mr-2" /> Save to Dashboard</>}
-                    </Button>
-                  )}
-                  {saveMessage && (
-                    <div className="text-sm font-medium flex items-center justify-center text-primary mt-1">
-                      <CheckCircle2 className="w-4 h-4 mr-1" /> {saveMessage}
-                    </div>
-                  )}
-                  {!user && (
-                    <p className="text-xs text-slate-500 text-center flex items-center justify-center mt-2">
-                      <Info className="w-3.5 h-3.5 mr-1" /> Sign in to save calculations
-                    </p>
-                  )}
-                </div>
+                </form>
               </CardContent>
             </Card>
           </div>

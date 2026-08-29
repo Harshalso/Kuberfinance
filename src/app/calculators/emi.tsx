@@ -1,9 +1,9 @@
-import { useState, useMemo } from 'react';
-import { useForm, useWatch } from 'react-hook-form';
+import { useState, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend } from 'recharts';
-import { Save, RotateCcw, Info, CheckCircle2 } from 'lucide-react';
+import { Save, RotateCcw, Info, CheckCircle2, Calculator } from 'lucide-react';
 import { useAuth } from '@/src/components/auth/auth-provider';
 import { saveCalculation } from '@/src/lib/supabase/calculations';
 import { calculateEMIDetails } from '@/src/lib/calculators/emi';
@@ -35,28 +35,30 @@ export function EMICalculator() {
   const { user } = useAuth();
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState("");
+  const [results, setResults] = useState<ReturnType<typeof calculateEMIDetails> | null>(null);
 
-  const { register, control, reset, formState: { errors } } = useForm<EMIFormValues>({
+  const { register, handleSubmit, reset, getValues, formState: { errors } } = useForm<EMIFormValues>({
     // @ts-expect-error - Zod coerce causes type mismatch with hook-form input types
     resolver: zodResolver(emiSchema),
     defaultValues: DEFAULT_VALUES,
-    mode: 'onChange'
   });
 
-  const values = useWatch({ control });
-  const parsed = emiSchema.safeParse(values);
+  useEffect(() => {
+    // Initial calculation on mount
+    const months = DEFAULT_VALUES.tenureUnit === 'years' ? DEFAULT_VALUES.tenure * 12 : DEFAULT_VALUES.tenure;
+    setResults(calculateEMIDetails(DEFAULT_VALUES.principal, DEFAULT_VALUES.interestRate, months));
+  }, []);
 
-  const results = useMemo(() => {
-    if (parsed.success) {
-      const { principal, interestRate, tenure, tenureUnit } = parsed.data;
-      const months = tenureUnit === 'years' ? tenure * 12 : tenure;
-      return calculateEMIDetails(principal, interestRate, months);
-    }
-    return null;
-  }, [parsed.success, parsed.data]);
+  const onCalculate = (data: EMIFormValues) => {
+    const months = data.tenureUnit === 'years' ? data.tenure * 12 : data.tenure;
+    setResults(calculateEMIDetails(data.principal, data.interestRate, months));
+  };
 
   const handleSave = async () => {
+    const currentValues = getValues();
+    const parsed = emiSchema.safeParse(currentValues);
     if (!user || !results || !parsed.success) return;
+    
     try {
       setSaving(true);
       await saveCalculation(user.id, 'EMI', parsed.data, {
@@ -93,75 +95,81 @@ export function EMICalculator() {
             <Card>
               <CardHeader>
                 <CardTitle>Loan Details</CardTitle>
-                <CardDescription>Adjust the inputs to recalculate instantly.</CardDescription>
+                <CardDescription>Enter your loan details to calculate EMI.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="space-y-2">
-                  <Label htmlFor="principal">Loan Amount (₹)</Label>
-                  <Input 
-                    id="principal" 
-                    type="number"
-                    placeholder="1000000"
-                    {...register('principal')}
-                  />
-                  {errors.principal && <p className="text-xs text-destructive">{errors.principal.message}</p>}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="interestRate">Annual Interest Rate (%)</Label>
-                  <Input 
-                    id="interestRate" 
-                    type="number"
-                    step="0.1"
-                    placeholder="8.5"
-                    {...register('interestRate')}
-                  />
-                  {errors.interestRate && <p className="text-xs text-destructive">{errors.interestRate.message}</p>}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="tenure">Loan Tenure</Label>
-                  <div className="flex gap-2">
-                    <div className="flex-1">
-                      <Input 
-                        id="tenure" 
-                        type="number"
-                        placeholder="10"
-                        {...register('tenure')}
-                      />
-                    </div>
-                    <select 
-                      className="flex h-10 w-[120px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                      {...register('tenureUnit')}
-                    >
-                      <option value="years">Years</option>
-                      <option value="months">Months</option>
-                    </select>
+                <form onSubmit={handleSubmit(onCalculate as any)} className="space-y-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="principal">Loan Amount (₹)</Label>
+                    <Input 
+                      id="principal" 
+                      type="number"
+                      placeholder="1000000"
+                      {...register('principal')}
+                    />
+                    {errors.principal && <p className="text-xs text-destructive">{errors.principal.message}</p>}
                   </div>
-                  {errors.tenure && <p className="text-xs text-destructive">{errors.tenure.message}</p>}
-                </div>
 
-                <div className="flex flex-col gap-3 pt-4 border-t">
-                  <Button variant="outline" onClick={() => reset(DEFAULT_VALUES)} className="w-full">
-                    <RotateCcw className="w-4 h-4 mr-2" /> Reset
-                  </Button>
-                  
-                  {user && (
-                    <Button onClick={handleSave} disabled={!results || saving} className="w-full">
-                      {saving ? "Saving..." : <><Save className="w-4 h-4 mr-2" /> Save to Dashboard</>}
-                    </Button>
-                  )}
-                  {saveMessage && (
-                    <div className="text-sm font-medium flex items-center justify-center text-primary mt-1">
-                      <CheckCircle2 className="w-4 h-4 mr-1" /> {saveMessage}
+                  <div className="space-y-2">
+                    <Label htmlFor="interestRate">Annual Interest Rate (%)</Label>
+                    <Input 
+                      id="interestRate" 
+                      type="number"
+                      step="0.1"
+                      placeholder="8.5"
+                      {...register('interestRate')}
+                    />
+                    {errors.interestRate && <p className="text-xs text-destructive">{errors.interestRate.message}</p>}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="tenure">Loan Tenure</Label>
+                    <div className="flex gap-2">
+                      <div className="flex-1">
+                        <Input 
+                          id="tenure" 
+                          type="number"
+                          placeholder="10"
+                          {...register('tenure')}
+                        />
+                      </div>
+                      <select 
+                        className="flex h-10 w-[120px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        {...register('tenureUnit')}
+                      >
+                        <option value="years">Years</option>
+                        <option value="months">Months</option>
+                      </select>
                     </div>
-                  )}
-                  {!user && (
-                    <p className="text-xs text-slate-500 text-center flex items-center justify-center mt-2">
-                      <Info className="w-3.5 h-3.5 mr-1" /> Sign in to save calculations
-                    </p>
-                  )}
-                </div>
+                    {errors.tenure && <p className="text-xs text-destructive">{errors.tenure.message}</p>}
+                  </div>
+
+                  <div className="flex flex-col gap-3 pt-4 border-t">
+                    <Button type="submit" className="w-full font-bold">
+                      <Calculator className="w-4 h-4 mr-2" /> Calculate EMI
+                    </Button>
+                    
+                    <Button type="button" variant="outline" onClick={() => { reset(DEFAULT_VALUES); onCalculate(DEFAULT_VALUES); }} className="w-full">
+                      <RotateCcw className="w-4 h-4 mr-2" /> Reset
+                    </Button>
+                    
+                    {user && (
+                      <Button type="button" variant="secondary" onClick={handleSave} disabled={!results || saving} className="w-full">
+                        {saving ? "Saving..." : <><Save className="w-4 h-4 mr-2" /> Save to Dashboard</>}
+                      </Button>
+                    )}
+                    {saveMessage && (
+                      <div className="text-sm font-medium flex items-center justify-center text-primary mt-1">
+                        <CheckCircle2 className="w-4 h-4 mr-1" /> {saveMessage}
+                      </div>
+                    )}
+                    {!user && (
+                      <p className="text-xs text-slate-500 text-center flex items-center justify-center mt-2">
+                        <Info className="w-3.5 h-3.5 mr-1" /> Sign in to save calculations
+                      </p>
+                    )}
+                  </div>
+                </form>
               </CardContent>
             </Card>
           </div>

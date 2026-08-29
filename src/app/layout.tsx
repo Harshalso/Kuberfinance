@@ -31,8 +31,9 @@ export function AppLayout({ children }: LayoutProps) {
     { label: 'EMI Calculator', path: '/emi-calculator' },
     { label: 'Part Payment', path: '/part-payment-calculator' },
     { label: 'Company Search', path: '/company-search' },
-    { label: 'Bank Policies', path: '/policies' },
+    { label: 'Bank Policies', path: '/bank-policies' },
     { label: 'Offers', path: '/offers' },
+    { label: 'Pricing', path: '/pricing' },
   ];
 
   return (
@@ -77,6 +78,9 @@ export function AppLayout({ children }: LayoutProps) {
               <div className="flex items-center gap-4">
                 <Link to="/dashboard" className="text-sm font-medium text-slate-600 hover:text-primary transition-colors">
                   Dashboard
+                </Link>
+                <Link to="/payment-history" className="text-sm font-medium text-slate-600 hover:text-primary transition-colors">
+                  Billing
                 </Link>
                 {isAdmin && (
                   <Link to="/admin" className="text-sm font-medium text-primary hover:text-primary/80 transition-colors flex items-center gap-1">
@@ -129,6 +133,9 @@ export function AppLayout({ children }: LayoutProps) {
                 <>
                   <Link to="/dashboard" className="block px-2 py-1 text-base font-medium text-slate-600">
                     Dashboard
+                  </Link>
+                  <Link to="/payment-history" className="block px-2 py-1 text-base font-medium text-slate-600">
+                    Billing & History
                   </Link>
                   {isAdmin && (
                     <Link to="/admin" className="block px-2 py-1 text-base font-medium text-primary flex items-center gap-2">

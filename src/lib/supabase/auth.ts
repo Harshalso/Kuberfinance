@@ -1,14 +1,22 @@
-import { supabase } from './client';
+import { supabase, isSupabaseConfigured } from './client';
 import { UserProfile } from '@/src/types';
 import { LoginFormValues, RegisterFormValues, ForgotPasswordFormValues, ResetPasswordFormValues } from '../validators/auth';
 
+function ensureConfigured() {
+  if (!isSupabaseConfigured) {
+    throw new Error("Database is not configured. Please add SUPABASE_URL and SUPABASE_ANON_KEY to your settings.");
+  }
+}
+
 export async function getCurrentUser() {
+  if (!isSupabaseConfigured) return null;
   const { data: { user }, error } = await supabase.auth.getUser();
   if (error) return null;
   return user;
 }
 
 export async function getCurrentProfile(userId: string): Promise<UserProfile | null> {
+  if (!isSupabaseConfigured) return null;
   const { data, error } = await supabase
     .from('profiles')
     .select('*')
@@ -48,12 +56,14 @@ export async function getCurrentProfile(userId: string): Promise<UserProfile | n
 }
 
 export async function login({ email, password }: LoginFormValues) {
+  ensureConfigured();
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) throw error;
   return data;
 }
 
 export async function register({ email, password, fullName }: RegisterFormValues) {
+  ensureConfigured();
   // 1. Create Auth User
   const { data, error } = await supabase.auth.signUp({
     email,
@@ -86,11 +96,13 @@ export async function register({ email, password, fullName }: RegisterFormValues
 }
 
 export async function logout() {
+  if (!isSupabaseConfigured) return;
   const { error } = await supabase.auth.signOut();
   if (error) throw error;
 }
 
 export async function resetPassword({ email }: ForgotPasswordFormValues) {
+  ensureConfigured();
   const redirectUrl = `${window.location.origin}/reset-password`;
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
     redirectTo: redirectUrl,
@@ -99,6 +111,7 @@ export async function resetPassword({ email }: ForgotPasswordFormValues) {
 }
 
 export async function updatePassword({ password }: ResetPasswordFormValues) {
+  ensureConfigured();
   const { error } = await supabase.auth.updateUser({
     password: password
   });
