@@ -87,7 +87,8 @@ export function BillingDashboard() {
 
   if (isLoading) return <div className="flex justify-center py-12"><Loader2 className="animate-spin h-8 w-8 text-indigo-600" /></div>;
 
-  const plan = sub?.subscription_plans;
+  const planArray = sub?.subscription_plans;
+  const plan = Array.isArray(planArray) ? planArray[0] : planArray;
   const isPro = plan?.slug?.includes('pro');
   const maxTeamMembers = getUserMaxTeamMembers(plan?.slug);
   const isActive = sub?.status === 'active' && new Date(sub?.current_period_end) > new Date();

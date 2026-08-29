@@ -31,7 +31,12 @@ const requireAuth = async (req: express.Request, res: express.Response, next: ex
 
 router.post('/create', requireAuth, async (req, res) => {
   try {
-    const { planSlug } = req.body;
+    console.log("Razorpay key configured:", !!(process.env.VITE_RAZORPAY_KEY_ID || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || process.env.RAZORPAY_KEY_ID));
+    console.log("Razorpay secret configured:", !!process.env.RAZORPAY_KEY_SECRET);
+    console.log("Supabase URL configured:", !!(process.env.VITE_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL));
+    console.log("Supabase service key configured:", !!process.env.SUPABASE_SERVICE_ROLE_KEY);
+
+    const { planSlug } = req.body || {};
     const userId = (req as any).user.id;
     
     if (!planSlug) {
@@ -78,14 +83,22 @@ router.post('/create', requireAuth, async (req, res) => {
       updated_at: new Date().toISOString()
     }, { onConflict: 'user_id' });
 
-    res.json({
+    return res.json({
+      success: true,
       subscriptionId: subscription.id,
-      keyId: process.env.VITE_RAZORPAY_KEY_ID || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID
+      keyId: process.env.VITE_RAZORPAY_KEY_ID || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || process.env.RAZORPAY_KEY_ID
     });
 
-  } catch (err: any) {
-    console.error('Error creating subscription:', err);
-    res.status(500).json({ error: err?.error?.description || 'Failed to create subscription' });
+  } catch (error: any) {
+    console.error("CREATE_SUBSCRIPTION_ERROR", {
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
+    });
+
+    return res.status(500).json({
+      success: false,
+      error: "Unable to create subscription"
+    });
   }
 });
 

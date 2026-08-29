@@ -93,7 +93,8 @@ export function TeamDashboard() {
     return <div className="flex justify-center py-12"><Loader2 className="animate-spin h-8 w-8 text-indigo-600" /></div>;
   }
 
-  const plan = sub?.subscription_plans;
+  const planArray = sub?.subscription_plans;
+  const plan = Array.isArray(planArray) ? planArray[0] : planArray;
   const isPro = plan?.slug?.includes('pro');
   const isActive = sub?.status === 'active' && new Date(sub?.current_period_end) > new Date();
 
@@ -110,7 +111,7 @@ export function TeamDashboard() {
   const maxMembers = getUserMaxTeamMembers(plan?.slug) - 1; // 10 total users = 1 owner + 9 members
   const currentCount = members?.length || 0;
 
-  const handleInvite = (e: React.FormEvent) => {
+  const handleInvite = (e: any) => {
     e.preventDefault();
     if (!email) return;
     inviteMutation.mutate(email);

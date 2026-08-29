@@ -1,0 +1,3 @@
+sed -i 's/const plan = sub?.subscription_plans;/const planArray = sub?.subscription_plans;\n  const plan = Array.isArray(planArray) ? planArray[0] : planArray;/g' src/app/dashboard/billing/page.tsx
+sed -i 's/const plan = sub?.subscription_plans;/const planArray = sub?.subscription_plans;\n  const plan = Array.isArray(planArray) ? planArray[0] : planArray;/g' src/app/dashboard/team/page.tsx
+sed -i "s/const activeSlug = currentSub?.subscription_plans?.slug || 'free';/const currentPlanArray = currentSub?.subscription_plans;\n  const currentPlan = Array.isArray(currentPlanArray) ? currentPlanArray[0] : currentPlanArray;\n  const activeSlug = currentPlan?.slug || 'free';/g" src/app/pricing/page.tsx

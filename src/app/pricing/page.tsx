@@ -32,7 +32,9 @@ export function Pricing() {
     enabled: !!user
   });
 
-  const activeSlug = currentSub?.subscription_plans?.slug || 'free';
+  const currentPlanArray = currentSub?.subscription_plans;
+  const currentPlan = Array.isArray(currentPlanArray) ? currentPlanArray[0] : currentPlanArray;
+  const activeSlug = currentPlan?.slug || 'free';
 
   const handleSubscribe = async (planSlug: string) => {
     if (!user) {
