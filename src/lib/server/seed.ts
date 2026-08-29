@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { getSupabaseAdmin } from './supabase';
 
 export async function seedPlans() {

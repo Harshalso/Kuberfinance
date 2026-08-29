@@ -17,6 +17,8 @@ import { ForgotPassword } from './app/auth/forgot-password';
 import { ResetPassword } from './app/auth/reset-password';
 
 import { Dashboard } from './app/dashboard/page';
+import { BillingDashboard } from './app/dashboard/billing/page';
+import { TeamDashboard } from './app/dashboard/team/page';
 
 // Admin Routes
 import { AdminLayout } from './app/admin/layout';
@@ -85,6 +87,8 @@ export default function App() {
             {/* Protected Routes */}
             <Route element={<RequireAuth />}>
               <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/dashboard/billing" element={<BillingDashboard />} />
+              <Route path="/dashboard/team" element={<TeamDashboard />} />
               <Route path="/payment-history" element={<PaymentHistory />} />
             </Route>
 

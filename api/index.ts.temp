@@ -5,7 +5,6 @@ import webhookRoutes from '../src/lib/server/webhook-routes';
 import seedRoutes from '../src/lib/server/seed-route';
 import teamRoutes from '../src/lib/server/team-routes';
 import { getSupabaseAdmin } from '../src/lib/server/supabase';
-import { getEntitlementsForPlan } from '../src/lib/subscriptions/entitlements';
 
 const app = express();
 
@@ -26,6 +25,7 @@ app.get("/api/entitlements/check", async (req, res) => {
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'Unauthorized: Missing or invalid token' });
   }
+
   const token = authHeader.split(' ')[1];
   
   const supabase = getSupabaseAdmin();
@@ -46,6 +46,7 @@ app.get("/api/entitlements/check", async (req, res) => {
     .single();
 
   let planSlug = 'free';
+  let planSlug = 'free';
   
   if (sub && sub.plan_id) {
     // First try subscription_plans
@@ -59,25 +60,6 @@ app.get("/api/entitlements/check", async (req, res) => {
         planSlug = oPlan.razorpay_plan_id;
       }
     }
-  } else if (user.email) {
-    // Check if user is a team member
-     const { data: teamMember } = await supabase.from('team_members').select('owner_id').eq('member_email', user.email).single();
-     if (teamMember) {
-        const { data: ownerSub } = await supabase
-          .from('subscriptions')
-          .select('plan_id')
-          .eq('user_id', teamMember.owner_id)
-          .eq('status', 'active')
-          .gte('current_period_end', new Date().toISOString())
-          .single();
-
-        if (ownerSub && ownerSub.plan_id) {
-           const { data: ownerPlan } = await supabase.from('subscription_plans').select('slug').eq('id', ownerSub.plan_id).single();
-           if (ownerPlan && ownerPlan.slug?.includes('pro')) {
-              planSlug = ownerPlan.slug;
-           }
-        }
-     }
   }
 
   const entitlements = getEntitlementsForPlan(planSlug);
@@ -101,3 +83,4 @@ export const config = {
     bodyParser: false,
   },
 };
+

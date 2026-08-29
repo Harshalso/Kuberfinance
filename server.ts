@@ -4,7 +4,10 @@ import { createServer as createViteServer } from "vite";
 import fs from "fs/promises";
 import 'dotenv/config';
 import paymentRoutes from './src/lib/server/payment-routes';
-import { seedPlans } from './src/lib/server/seed';
+import subscriptionRoutes from './src/lib/server/subscription-routes';
+import webhookRoutes from './src/lib/server/webhook-routes';
+import seedRoutes from './src/lib/server/seed-route';
+import teamRoutes from './src/lib/server/team-routes';
 
 async function startServer() {
   const app = express();
@@ -15,6 +18,7 @@ async function startServer() {
   // ==========================================
 
   // Webhooks must be parsed as raw buffers for signature verification
+  app.use('/api/webhooks', express.raw({ type: 'application/json' }), webhookRoutes);
   app.use('/api/payment/webhook', express.raw({ type: 'application/json' }));
   
   // Middleware for parsing JSON requests for all other routes
@@ -22,6 +26,9 @@ async function startServer() {
   
   // Mount payment routes
   app.use('/api/payment', paymentRoutes);
+  app.use('/api/subscriptions', subscriptionRoutes);
+  app.use('/api/seed', seedRoutes);
+  app.use('/api/team', teamRoutes);
 
   // Entitlements checking route
   app.get("/api/entitlements/check", async (req, res) => {
@@ -53,7 +60,7 @@ async function startServer() {
       .single();
 
     let planSlug = 'free';
-    
+
     if (sub && sub.plan_id) {
       // First try subscription_plans
       const { data: sPlan } = await supabase.from('subscription_plans').select('slug').eq('id', sub.plan_id).single();
@@ -66,6 +73,25 @@ async function startServer() {
           planSlug = oPlan.razorpay_plan_id;
         }
       }
+    } else if (user.email) {
+      // Check if user is a team member
+       const { data: teamMember } = await supabase.from('team_members').select('owner_id').eq('member_email', user.email).single();
+       if (teamMember) {
+          const { data: ownerSub } = await supabase
+            .from('subscriptions')
+            .select('plan_id')
+            .eq('user_id', teamMember.owner_id)
+            .eq('status', 'active')
+            .gte('current_period_end', new Date().toISOString())
+            .single();
+
+          if (ownerSub && ownerSub.plan_id) {
+             const { data: ownerPlan } = await supabase.from('subscription_plans').select('slug').eq('id', ownerSub.plan_id).single();
+             if (ownerPlan && ownerPlan.slug?.includes('pro')) {
+                planSlug = ownerPlan.slug;
+             }
+          }
+       }
     }
 
     const { getEntitlementsForPlan } = await import('./src/lib/subscriptions/entitlements.js');
@@ -82,11 +108,6 @@ async function startServer() {
   // Health check endpoint
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok" });
-  });
-
-  app.get("/api/seed", async (req, res) => {
-    await seedPlans();
-    res.json({ success: true });
   });
 
   // ==========================================
