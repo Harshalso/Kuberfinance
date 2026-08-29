@@ -1,4 +1,5 @@
-// @ts-nocheck
+import fs from 'fs';
+const code = `// @ts-nocheck
 import express, { Router } from 'express';
 import { getSupabaseAdmin } from './supabase.js';
 import { getRazorpay } from '../services/razorpay.js';
@@ -76,7 +77,7 @@ router.get('/seed-plans', async (req, res) => {
             name: plan.name,
             amount: plan.price * 100, // paise
             currency: plan.currency,
-            description: `${plan.name} Plan`
+            description: \`\${plan.name} Plan\`
           }
         });
         razorpay_plan_id = rzpPlan.id;
@@ -95,3 +96,5 @@ router.get('/seed-plans', async (req, res) => {
 });
 
 export default router;
+`;
+fs.writeFileSync('src/lib/server/seed-route.ts', code);

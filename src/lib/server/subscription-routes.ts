@@ -75,7 +75,12 @@ router.post('/create', requireAuth, async (req, res) => {
     });
 
     // Store the pending subscription in Supabase
+    const now = new Date();
+    const nextMonth = new Date();
+    nextMonth.setMonth(nextMonth.getMonth() + 1);
     await supabase.from('subscriptions').upsert({
+      current_period_start: now.toISOString(),
+      current_period_end: nextMonth.toISOString(),
       user_id: userId,
       plan_id: plan.id, // Or keep slug depending on schema, let's keep plan_id as it was used before or add razorpay_subscription_id
       status: subscription.status, // "created"
