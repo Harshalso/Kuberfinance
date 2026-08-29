@@ -29,13 +29,27 @@ export function Pricing() {
   useEffect(() => {
     async function loadPlans() {
       try {
-        const { data, error } = await supabase
-          .from('payment_plans')
-          .select('id, name, razorpay_plan_id, price, duration, active')
-          .eq('active', true)
+        let data: any[] | null = [];
+        const { data: subData, error: subError } = await supabase
+          .from('subscription_plans')
+          .select('*')
+          .eq('is_active', true)
           .order('price', { ascending: true });
+        
+        if (!subError && subData) {
+          data = subData.map((p: any) => ({ ...p, duration: p.billing_interval }));
+        } else {
+          const { data: oldData, error: oldError } = await supabase
+            .from('payment_plans')
+            .select('*')
+            .eq('active', true)
+            .order('price', { ascending: true });
+            
+          if (oldError) throw oldError;
+          data = oldData;
+        }
 
-        if (error) throw error;
+        if (!data) data = [];
         
         const mappedPlans = data.map((plan: any) => {
           let description = '';
@@ -133,9 +147,15 @@ export function Pricing() {
         body: JSON.stringify({ planId: plan.id, userId: user.id })
       });
 
-      const orderData = await orderRes.json();
+      let orderData;
+      try {
+        orderData = await orderRes.json();
+      } catch (parseErr) {
+        throw new Error('Server returned an invalid response. Please try again later.');
+      }
+
       if (!orderRes.ok) {
-        throw new Error(orderData.error || 'Failed to create order');
+        throw new Error(orderData?.error || 'Failed to create order');
       }
 
       const options = {

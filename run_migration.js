@@ -1,28 +1,19 @@
 import { createClient } from '@supabase/supabase-js';
+import dotenv from 'dotenv';
+dotenv.config();
 
-const url = process.env.VITE_SUPABASE_URL;
+const url = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
 const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-if (!url || !key) {
-  console.log("No URL or key", url, key);
-  process.exit(1);
-}
-
 const supabase = createClient(url, key);
 
 async function run() {
-  const { data, error } = await supabase.from('payment_plans').upsert([
-    { id: 'plan_basic_monthly', name: 'Basic', description: 'Essential features for individuals.', price: 149, billing_cycle: 'monthly', features: '["User Registration & Login", "EMI Calculator", "Company Category Search", "Part Payment Calculator", "Personal Account (1 email)", "Access to Bank Policies", "Saved Calculations"]', is_popular: false, active: true },
-    { id: 'plan_pro_monthly', name: 'Pro', description: 'Advanced features for professionals.', price: 999, billing_cycle: 'monthly', features: '["Everything in Basic", "Up to 10 registered email accounts", "Designed for teams, loan offices and finance professionals", "Priority access to new features"]', is_popular: true, active: true },
-    { id: 'plan_basic_yearly', name: 'Basic Annual', description: 'Annual savings for individuals.', price: 1499, billing_cycle: 'yearly', features: '["User Registration & Login", "EMI Calculator", "Company Category Search", "Part Payment Calculator", "Personal Account (1 email)", "Access to Bank Policies", "Saved Calculations"]', is_popular: false, active: true },
-    { id: 'plan_pro_yearly', name: 'Pro Annual', description: 'Annual savings for professionals.', price: 9999, billing_cycle: 'yearly', features: '["Everything in Basic", "Up to 10 email accounts", "Team-oriented access", "Priority access to new features"]', is_popular: true, active: true }
-  ]);
-  
-  if (error) console.error("Error inserting:", error);
-  else console.log("Success inserting plans.");
-
-  const { error: error2 } = await supabase.from('payment_plans').update({ active: false }).in('id', ['plan_basic', 'plan_pro', 'plan_enterprise']);
-  if (error2) console.error("Error updating old:", error2);
-  else console.log("Success updating old plans.");
+  const { data, error } = await supabase.rpc('exec_sql', { sql: 'SELECT column_name, data_type FROM information_schema.columns WHERE table_name = \'subscriptions\';' });
+  if (error) {
+     console.log("RPC Failed. Getting rows:");
+     const {data: rows} = await supabase.from('subscriptions').select('*').limit(1);
+     console.log(rows);
+  } else {
+     console.log(data);
+  }
 }
 run();

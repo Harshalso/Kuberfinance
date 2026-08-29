@@ -52,16 +52,31 @@ async function startServer() {
       .gte('current_period_end', new Date().toISOString())
       .single();
 
+    let planSlug = 'free';
+    
+    if (sub && sub.plan_id) {
+      // First try subscription_plans
+      const { data: sPlan } = await supabase.from('subscription_plans').select('slug').eq('id', sub.plan_id).single();
+      if (sPlan && sPlan.slug) {
+        planSlug = sPlan.slug;
+      } else {
+        // Fallback to payment_plans
+        const { data: oPlan } = await supabase.from('payment_plans').select('razorpay_plan_id').eq('id', sub.plan_id).single();
+        if (oPlan && oPlan.razorpay_plan_id) {
+          planSlug = oPlan.razorpay_plan_id;
+        }
+      }
+    }
+
     const { getEntitlementsForPlan } = await import('./src/lib/subscriptions/entitlements.js');
-    const planId = sub ? sub.plan_id : 'free';
-    const entitlements = getEntitlementsForPlan(planId);
+    const entitlements = getEntitlementsForPlan(planSlug);
 
     if (feature) {
       const hasAccess = !!(entitlements as any)[feature];
-      return res.json({ access: hasAccess, plan: planId });
+      return res.json({ access: hasAccess, plan: planSlug });
     }
     
-    res.json({ entitlements, plan: planId });
+    res.json({ entitlements, plan: planSlug });
   });
 
   // Health check endpoint

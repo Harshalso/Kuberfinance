@@ -38,7 +38,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     
     // Check if the current period end is in the future
     if (data && new Date(data.current_period_end) > new Date()) {
-      setSubscription(data as Subscription);
+      let planSlug = 'free';
+      const { data: sPlan } = await supabase.from('subscription_plans').select('slug').eq('id', data.plan_id).single();
+      if (sPlan && sPlan.slug) {
+        planSlug = sPlan.slug;
+      } else {
+        const { data: oPlan } = await supabase.from('payment_plans').select('razorpay_plan_id').eq('id', data.plan_id).single();
+        if (oPlan && oPlan.razorpay_plan_id) planSlug = oPlan.razorpay_plan_id;
+      }
+      setSubscription({ ...data, plan_id: planSlug } as Subscription);
     } else {
       setSubscription(null);
     }
