@@ -23,6 +23,47 @@ async function startServer() {
   // Mount payment routes
   app.use('/api/payment', paymentRoutes);
 
+  // Entitlements checking route
+  app.get("/api/entitlements/check", async (req, res) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Unauthorized: Missing or invalid token' });
+    }
+    const token = authHeader.split(' ')[1];
+    
+    // We'd typically import getSupabaseAdmin from payment-routes or a shared location
+    // Since we are adding it directly here:
+    const { getSupabaseAdmin } = await import('./src/lib/server/supabase.js');
+    const supabase = getSupabaseAdmin();
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    
+    if (error || !user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const feature = req.query.feature as string;
+    
+    // Fetch active subscription
+    const { data: sub } = await supabase
+      .from('subscriptions')
+      .select('plan_id, status, current_period_end')
+      .eq('user_id', user.id)
+      .eq('status', 'active')
+      .gte('current_period_end', new Date().toISOString())
+      .single();
+
+    const { getEntitlementsForPlan } = await import('./src/lib/subscriptions/entitlements.js');
+    const planId = sub ? sub.plan_id : 'free';
+    const entitlements = getEntitlementsForPlan(planId);
+
+    if (feature) {
+      const hasAccess = !!(entitlements as any)[feature];
+      return res.json({ access: hasAccess, plan: planId });
+    }
+    
+    res.json({ entitlements, plan: planId });
+  });
+
   // Health check endpoint
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok" });

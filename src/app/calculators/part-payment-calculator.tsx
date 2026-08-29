@@ -13,6 +13,8 @@ import { Input } from '@/src/components/ui/input';
 import { Label } from '@/src/components/ui/label';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/src/components/ui/card';
 
+import { FeatureGate } from '@/src/components/ui/feature-gate';
+
 const partPaymentSchema = z.object({
   originalLoanAmount: z.coerce.number().min(1000, "Minimum amount is ₹1,000").optional(),
   outstandingPrincipal: z.coerce.number().min(1000, "Minimum amount is ₹1,000"),
@@ -100,8 +102,9 @@ export function PartPaymentCalculator() {
   ] : [];
 
   return (
-    <div className="py-12 bg-slate-50 min-h-[calc(100vh-4rem)]">
-      <div className="container mx-auto px-4 max-w-7xl">
+    <FeatureGate feature="part_payment">
+      <div className="py-12 bg-slate-50 min-h-[calc(100vh-4rem)]">
+        <div className="container mx-auto px-4 max-w-7xl">
         <div className="mb-8 max-w-3xl">
           <h1 className="text-3xl font-bold tracking-tight text-slate-900 mb-2">Part Payment Calculator</h1>
           <p className="text-slate-600">Analyze the long-term impact of pre-payments. Compare keeping your EMI the same to reduce tenure, versus reducing your EMI to free up cash flow.</p>
@@ -322,6 +325,7 @@ export function PartPaymentCalculator() {
         </div>
       </div>
     </div>
+    </FeatureGate>
   );
 }
 

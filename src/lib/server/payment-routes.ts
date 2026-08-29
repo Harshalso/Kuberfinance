@@ -180,6 +180,14 @@ router.post('/webhook', async (req, res) => {
     const event = payload.event;
     
     const supabase = getSupabaseAdmin();
+    
+    const eventId = req.headers['x-razorpay-event-id'] as string || `evt_${Date.now()}`;
+    // Check idempotency
+    const { data: existingEvent } = await (supabase as any).from('payment_events').select('id').eq('event_id', eventId).single();
+    if (existingEvent) {
+      return res.json({ status: 'ok', message: 'Event already processed' });
+    }
+    await (supabase as any).from('payment_events').insert({ event_id: eventId, event_type: event, payload, status: 'processed' });
 
     if (event === 'payment.captured' || event === 'payment.authorized') {
       const payment = payload.payload.payment.entity;

@@ -31,12 +31,63 @@ export function Pricing() {
       try {
         const { data, error } = await supabase
           .from('payment_plans')
-          .select('*')
+          .select('id, name, razorpay_plan_id, price, duration, active')
           .eq('active', true)
           .order('price', { ascending: true });
 
         if (error) throw error;
-        setPlans(data as PaymentPlan[]);
+        
+        const mappedPlans = data.map((plan: any) => {
+          let description = '';
+          let features: string[] = [];
+          let is_popular = false;
+          
+          if (plan.name.includes('Pro')) {
+            if (plan.duration === 'yearly') {
+              description = 'Annual saving: ₹1,989 compared with paying ₹999/month for 12 months.';
+              features = [
+                'Everything in Basic', 
+                'Up to 10 email accounts', 
+                'Team-oriented access', 
+                'Priority access to new features'
+              ];
+            } else {
+              description = 'Designed for teams, loan offices and finance professionals';
+              features = [
+                'Everything in Basic', 
+                'Up to 10 registered email accounts', 
+                'Priority access to new features'
+              ];
+            }
+            is_popular = true;
+          } else {
+            if (plan.duration === 'yearly') {
+              description = 'Annual saving: ₹289 compared with paying ₹149/month for 12 months.';
+            } else {
+              description = 'Everything in Free';
+            }
+            features = [
+              'EMI Calculator', 
+              'Company Category Search', 
+              'Part Payment Calculator', 
+              'Bank Policy access', 
+              'Saved calculations'
+            ];
+            is_popular = false;
+          }
+          
+          return {
+            id: plan.id,
+            name: plan.name,
+            description: description,
+            price: Number(plan.price),
+            billing_cycle: plan.duration,
+            features: features,
+            is_popular: is_popular
+          };
+        });
+
+        setPlans(mappedPlans);
       } catch (err: any) {
         console.error('Failed to load plans:', err);
       } finally {
