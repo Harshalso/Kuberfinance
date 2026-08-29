@@ -4,6 +4,7 @@ import { createServer as createViteServer } from "vite";
 import fs from "fs/promises";
 import 'dotenv/config';
 import paymentRoutes from './src/lib/server/payment-routes';
+import { seedPlans } from './src/lib/server/seed';
 
 async function startServer() {
   const app = express();
@@ -27,6 +28,11 @@ async function startServer() {
     res.json({ status: "ok" });
   });
 
+  app.get("/api/seed", async (req, res) => {
+    await seedPlans();
+    res.json({ success: true });
+  });
+
   // ==========================================
   // VITE & FRONTEND SERVING
   // ==========================================
@@ -42,6 +48,7 @@ async function startServer() {
     // Serve static files in production
     const distPath = path.join(process.cwd(), 'dist');
     
+
     // Serve static assets EXCEPT index.html (so we can inject env vars)
     app.use(express.static(distPath, { index: false }));
     

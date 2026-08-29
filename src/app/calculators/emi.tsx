@@ -15,7 +15,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/src
 
 const emiSchema = z.object({
   principal: z.coerce.number().min(1000, "Minimum amount is ₹1,000"),
-  interestRate: z.coerce.number().min(0.1, "Minimum rate is 0.1%").max(100, "Maximum rate is 100%"),
+  interestRate: z.coerce.number().min(0.0000000001, "Minimum rate must be > 0%").max(100, "Maximum rate is 100%"),
   tenure: z.coerce.number().min(1, "Minimum tenure is 1").max(360, "Maximum tenure is 360"),
   tenureUnit: z.enum(["months", "years"])
 });
@@ -115,7 +115,7 @@ export function EMICalculator() {
                     <Input 
                       id="interestRate" 
                       type="number"
-                      step="0.1"
+                      step="any"
                       placeholder="8.5"
                       {...register('interestRate')}
                     />

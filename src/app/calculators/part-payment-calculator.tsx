@@ -16,7 +16,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 const partPaymentSchema = z.object({
   originalLoanAmount: z.coerce.number().min(1000, "Minimum amount is ₹1,000").optional(),
   outstandingPrincipal: z.coerce.number().min(1000, "Minimum amount is ₹1,000"),
-  interestRate: z.coerce.number().min(0.1, "Minimum rate is 0.1%").max(100, "Maximum rate is 100%"),
+  interestRate: z.coerce.number().min(0.0000000001, "Minimum rate must be > 0%").max(100, "Maximum rate is 100%"),
   remainingTenure: z.coerce.number().min(1, "Minimum tenure is 1").max(360, "Maximum tenure is 360"),
   partPayment: z.coerce.number().min(0, "Cannot be negative"),
   currentEmi: z.coerce.number().min(0, "Cannot be negative").optional(),
@@ -132,7 +132,7 @@ export function PartPaymentCalculator() {
                     <Input 
                       id="interestRate" 
                       type="number"
-                      step="0.1"
+                      step="any"
                       {...register('interestRate')}
                     />
                     {errors.interestRate && <p className="text-xs text-destructive">{errors.interestRate.message}</p>}

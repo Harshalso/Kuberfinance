@@ -2,11 +2,13 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/src/lib/supabase/client';
 import { getCurrentProfile } from '@/src/lib/supabase/auth';
-import { UserProfile } from '@/src/types';
+import { UserProfile, Subscription } from '@/src/types';
 
 interface AuthContextType {
   user: User | null;
   profile: UserProfile | null;
+  subscription: Subscription | null;
+  hasActiveSubscription: boolean;
   loading: boolean;
   isAdmin: boolean;
 }
@@ -14,6 +16,8 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType>({
   user: null,
   profile: null,
+  subscription: null,
+  hasActiveSubscription: false,
   loading: true,
   isAdmin: false,
 });
@@ -21,7 +25,24 @@ const AuthContext = createContext<AuthContextType>({
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const fetchSubscription = async (userId: string) => {
+    const { data } = await supabase
+      .from('subscriptions')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('status', 'active')
+      .single();
+    
+    // Check if the current period end is in the future
+    if (data && new Date(data.current_period_end) > new Date()) {
+      setSubscription(data as Subscription);
+    } else {
+      setSubscription(null);
+    }
+  };
 
   useEffect(() => {
     // Get initial session
@@ -30,24 +51,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (session?.user) {
         const p = await getCurrentProfile(session.user.id);
         setProfile(p);
+        await fetchSubscription(session.user.id);
       }
       setLoading(false);
     });
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const { data: { subscription: authSub } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setUser(session?.user ?? null);
       if (session?.user) {
         const p = await getCurrentProfile(session.user.id);
         setProfile(p);
+        await fetchSubscription(session.user.id);
       } else {
         setProfile(null);
+        setSubscription(null);
       }
       setLoading(false);
     });
 
     return () => {
-      subscription.unsubscribe();
+      authSub.unsubscribe();
     };
   }, []);
 
@@ -55,6 +79,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     <AuthContext.Provider value={{ 
       user, 
       profile, 
+      subscription,
+      hasActiveSubscription: !!subscription || profile?.role === 'admin',
       loading,
       isAdmin: profile?.role === 'admin'
     }}>

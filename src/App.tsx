@@ -8,6 +8,7 @@ import { AppLayout } from './app/layout';
 import { Home } from './app/page';
 import { AuthProvider } from './components/auth/auth-provider';
 import { RequireAuth } from './components/auth/require-auth';
+import { RequireSubscription } from './components/auth/require-subscription';
 import { RequireAdmin } from './components/auth/require-admin';
 
 import { Login } from './app/auth/login';
@@ -57,10 +58,6 @@ export default function App() {
             
             {/* Public Features */}
             <Route path="/emi-calculator" element={<EMICalculator />} />
-            <Route path="/part-payment-calculator" element={<PartPaymentCalculator />} />
-            <Route path="/company-search" element={<CompanySearch />} />
-            <Route path="/bank-policies" element={<Policies />} />
-            <Route path="/bank-policies/:bankId" element={<PolicyDetail />} />
             <Route path="/offers" element={<Offers />} />
             
             <Route path="/pricing" element={<Pricing />} />
@@ -69,6 +66,14 @@ export default function App() {
             <Route path="/terms" element={<TermsOfService />} />
             <Route path="/disclaimer" element={<Disclaimer />} />
             <Route path="/contact" element={<Contact />} />
+            
+            {/* Premium Features (Require Subscription) */}
+            <Route element={<RequireSubscription />}>
+              <Route path="/part-payment-calculator" element={<PartPaymentCalculator />} />
+              <Route path="/company-search" element={<CompanySearch />} />
+              <Route path="/bank-policies" element={<Policies />} />
+              <Route path="/bank-policies/:bankId" element={<PolicyDetail />} />
+            </Route>
 
             
             {/* Auth Routes */}

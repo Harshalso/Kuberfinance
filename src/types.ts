@@ -7,6 +7,16 @@ export interface UserProfile {
   created_at?: string;
 }
 
+export interface Subscription {
+  id: string;
+  user_id: string;
+  plan_id: string;
+  status: 'active' | 'past_due' | 'canceled' | 'unpaid' | 'trialing';
+  current_period_start: string;
+  current_period_end: string;
+  created_at: string;
+}
+
 export interface Offer {
   id: string;
   title: string;

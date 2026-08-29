@@ -21,6 +21,7 @@ export function Pricing() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [plans, setPlans] = useState<PaymentPlan[]>([]);
+  const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [processingId, setProcessingId] = useState<string | null>(null);
@@ -31,53 +32,29 @@ export function Pricing() {
         const { data, error } = await supabase
           .from('payment_plans')
           .select('*')
-          .eq('is_active', true)
+          .eq('active', true)
           .order('price', { ascending: true });
 
         if (error) throw error;
         setPlans(data as PaymentPlan[]);
       } catch (err: any) {
         console.error('Failed to load plans:', err);
-        // Fallback for demo purposes if table doesn't exist
-        setPlans([
-          {
-            id: 'plan_basic',
-            name: 'Basic',
-            description: 'Essential features for individuals.',
-            price: 999,
-            billing_cycle: 'monthly',
-            features: ['Access to basic tools', 'Community support', 'Standard limits'],
-            is_popular: false
-          },
-          {
-            id: 'plan_pro',
-            name: 'Pro',
-            description: 'Advanced features for professionals.',
-            price: 2499,
-            billing_cycle: 'monthly',
-            features: ['All Basic features', 'Priority support', 'Extended limits', 'Advanced analytics'],
-            is_popular: true
-          },
-          {
-            id: 'plan_enterprise',
-            name: 'Enterprise',
-            description: 'Full access for teams.',
-            price: 9999,
-            billing_cycle: 'yearly',
-            features: ['All Pro features', '24/7 dedicated support', 'Unlimited usage', 'Custom integrations'],
-            is_popular: false
-          }
-        ]);
       } finally {
         setLoading(false);
       }
     }
+
     loadPlans();
   }, []);
 
   const handleSubscribe = async (plan: PaymentPlan) => {
     if (!user) {
       navigate('/login', { state: { returnTo: '/pricing' } });
+      return;
+    }
+
+    if (plan.price === 0) {
+      navigate('/dashboard');
       return;
     }
 
@@ -114,7 +91,7 @@ export function Pricing() {
         key: orderData.keyId,
         amount: orderData.amount,
         currency: orderData.currency,
-        name: 'React Dashboard',
+        name: 'Loan Finance Portal',
         description: `Subscription for ${plan.name} Plan`,
         order_id: orderData.orderId,
         handler: async function (response: any) {
@@ -136,6 +113,7 @@ export function Pricing() {
             });
 
             const verifyData = await verifyRes.json();
+
             if (verifyData.success) {
               navigate('/payment-history', { state: { success: true } });
             } else {
@@ -168,6 +146,25 @@ export function Pricing() {
     }
   };
 
+  const freePlan: PaymentPlan = {
+    id: 'free',
+    name: 'Free',
+    description: 'Basic access to the platform',
+    price: 0,
+    billing_cycle: billingCycle,
+    features: [
+      'User registration and login',
+      'EMI Calculator',
+      'Basic access to the platform'
+    ],
+    is_popular: false
+  };
+
+  const displayedPlans = [
+    freePlan,
+    ...plans.filter(p => p.billing_cycle === billingCycle)
+  ];
+
   return (
     <div className="py-20 bg-slate-50 min-h-[calc(100vh-4rem)]">
       <div className="container mx-auto px-4 max-w-6xl">
@@ -175,9 +172,28 @@ export function Pricing() {
           <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl mb-4">
             Simple, transparent pricing
           </h1>
-          <p className="text-lg text-slate-600">
+          <p className="text-lg text-slate-600 mb-8">
             Choose the perfect plan for your needs. Secure payments powered by Razorpay.
           </p>
+
+          <div className="flex items-center justify-center gap-4">
+            <span className={`text-sm font-medium ${billingCycle === 'monthly' ? 'text-slate-900' : 'text-slate-500'}`}>Monthly</span>
+            <button 
+              onClick={() => setBillingCycle(billingCycle === 'monthly' ? 'yearly' : 'monthly')}
+              className="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent bg-primary transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+              role="switch"
+              aria-checked={billingCycle === 'yearly'}
+            >
+              <span className="sr-only">Use setting</span>
+              <span 
+                aria-hidden="true" 
+                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${billingCycle === 'yearly' ? 'translate-x-5' : 'translate-x-0'}`}
+              />
+            </button>
+            <span className={`text-sm font-medium ${billingCycle === 'yearly' ? 'text-slate-900' : 'text-slate-500'}`}>
+              Yearly <span className="text-green-600 text-xs ml-1 font-bold">(Save up to 16%)</span>
+            </span>
+          </div>
         </div>
 
         {error && (
@@ -193,7 +209,7 @@ export function Pricing() {
           </div>
         ) : (
           <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto items-start">
-            {plans.map((plan) => (
+            {displayedPlans.map((plan) => (
               <Card 
                 key={plan.id} 
                 className={`relative flex flex-col h-full ${
@@ -235,6 +251,8 @@ export function Pricing() {
                   >
                     {processingId === plan.id ? (
                       <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing</>
+                    ) : plan.price === 0 ? (
+                      user ? 'Current Plan' : 'Sign Up Free'
                     ) : (
                       'Subscribe Now'
                     )}
