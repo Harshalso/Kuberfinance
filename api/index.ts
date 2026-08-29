@@ -1,5 +1,7 @@
 import express from 'express';
 import paymentRoutes from '../src/lib/server/payment-routes';
+import { getSupabaseAdmin } from '../src/lib/server/supabase';
+import { getEntitlementsForPlan } from '../src/lib/subscriptions/entitlements';
 
 const app = express();
 
@@ -16,7 +18,6 @@ app.get("/api/entitlements/check", async (req, res) => {
 
   const token = authHeader.split(' ')[1];
   
-  const { getSupabaseAdmin } = await import('../src/lib/server/supabase');
   const supabase = getSupabaseAdmin();
   const { data: { user }, error } = await supabase.auth.getUser(token);
   
@@ -50,7 +51,6 @@ app.get("/api/entitlements/check", async (req, res) => {
     }
   }
 
-  const { getEntitlementsForPlan } = await import('../src/lib/subscriptions/entitlements');
   const entitlements = getEntitlementsForPlan(planSlug);
 
   if (feature) {
