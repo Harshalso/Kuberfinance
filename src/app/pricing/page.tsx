@@ -149,9 +149,15 @@ export function Pricing() {
 
       let orderData;
       try {
-        orderData = await orderRes.json();
-      } catch (parseErr) {
-        throw new Error('Server returned an invalid response. Please try again later.');
+        const text = await orderRes.text();
+        try {
+          orderData = JSON.parse(text);
+        } catch (e) {
+          console.error("Invalid JSON response:", text);
+          throw new Error('Server returned an invalid response: ' + text.substring(0, 100));
+        }
+      } catch (parseErr: any) {
+        throw new Error(parseErr.message || 'Server returned an invalid response. Please try again later.');
       }
 
       if (!orderRes.ok) {
