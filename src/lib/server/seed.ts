@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { getSupabaseAdmin } from './supabase';
+import { getSupabaseAdmin } from './supabase.js';
 
 export async function seedPlans() {
   const supabase = getSupabaseAdmin();

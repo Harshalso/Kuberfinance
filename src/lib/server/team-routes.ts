@@ -1,6 +1,6 @@
 // @ts-nocheck
 import express, { Router } from 'express';
-import { getSupabaseAdmin } from './supabase';
+import { getSupabaseAdmin } from './supabase.js';
 
 const router = Router();
 

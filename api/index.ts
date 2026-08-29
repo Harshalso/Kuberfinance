@@ -1,12 +1,12 @@
 // @ts-nocheck
 import express from 'express';
-import paymentRoutes from '../src/lib/server/payment-routes';
-import subscriptionRoutes from '../src/lib/server/subscription-routes';
-import webhookRoutes from '../src/lib/server/webhook-routes';
-import seedRoutes from '../src/lib/server/seed-route';
-import teamRoutes from '../src/lib/server/team-routes';
-import { getSupabaseAdmin } from '../src/lib/server/supabase';
-import { getEntitlementsForPlan } from '../src/lib/subscriptions/entitlements';
+import paymentRoutes from '../src/lib/server/payment-routes.js';
+import subscriptionRoutes from '../src/lib/server/subscription-routes.js';
+import webhookRoutes from '../src/lib/server/webhook-routes.js';
+import seedRoutes from '../src/lib/server/seed-route.js';
+import teamRoutes from '../src/lib/server/team-routes.js';
+import { getSupabaseAdmin } from '../src/lib/server/supabase.js';
+import { getEntitlementsForPlan } from '../src/lib/subscriptions/entitlements.js';
 
 const app = express();
 

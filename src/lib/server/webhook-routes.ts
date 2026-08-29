@@ -1,7 +1,7 @@
 // @ts-nocheck
 import express, { Router } from 'express';
-import { verifyWebhookSignature } from '../services/razorpay';
-import { getSupabaseAdmin } from './supabase';
+import { verifyWebhookSignature } from '../services/razorpay.js';
+import { getSupabaseAdmin } from './supabase.js';
 
 const router = Router();
 
