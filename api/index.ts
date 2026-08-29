@@ -61,4 +61,15 @@ app.get("/api/entitlements/check", async (req, res) => {
   res.json({ entitlements, plan: planSlug });
 });
 
-export default app;
+// Vercel expects a default export function
+export default async function handler(req: any, res: any) {
+  return app(req, res);
+}
+
+// Disable Vercel's default body parser so Express can handle it properly (prevents hanging)
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
+
