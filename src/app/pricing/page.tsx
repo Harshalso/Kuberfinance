@@ -73,7 +73,7 @@ export function Pricing() {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || 'Failed to initialize checkout');
+        throw new Error(data.details || data.error || 'Failed to initialize checkout');
       }
 
       const options = {

@@ -83,7 +83,7 @@ router.post('/create', requireAuth, async (req, res) => {
       current_period_end: nextMonth.toISOString(),
       user_id: userId,
       plan_id: plan.id, // Or keep slug depending on schema, let's keep plan_id as it was used before or add razorpay_subscription_id
-      status: subscription.status, // "created"
+      status: subscription.status === 'created' ? 'pending' : (subscription.status === 'authenticated' ? 'pending' : subscription.status), // Map Razorpay statuses to DB constraint
       razorpay_subscription_id: subscription.id,
       updated_at: new Date().toISOString()
     }, { onConflict: 'user_id' });
@@ -95,14 +95,12 @@ router.post('/create', requireAuth, async (req, res) => {
     });
 
   } catch (error: any) {
-    console.error("CREATE_SUBSCRIPTION_ERROR", {
-      message: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined
-    });
+    console.error("CREATE_SUBSCRIPTION_ERROR", error);
 
     return res.status(500).json({
       success: false,
-      error: "Unable to create subscription"
+      error: "Unable to create subscription",
+      details: error?.error?.description || error?.message || String(error)
     });
   }
 });
