@@ -79,7 +79,7 @@ router.post('/create-order', requireAuth, async (req, res) => {
       console.warn('Could not insert transaction. Database might not have the table yet.', e);
     }
 
-    res.json({ orderId: order.id, amount: order.amount, currency: order.currency, keyId: process.env.VITE_RAZORPAY_KEY_ID || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID });
+    res.json({ orderId: order.id, amount: order.amount, currency: order.currency, keyId: process.env.RAZORPAY_KEY_ID || process.env.VITE_RAZORPAY_KEY_ID || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID });
   } catch (err: any) {
     console.error('Error creating order:', err);
     res.status(500).json({ error: err?.error?.description || 'Failed to create order' });

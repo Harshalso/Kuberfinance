@@ -1,9 +1,11 @@
-import Razorpay from 'razorpay';
+import fs from 'fs';
+const file = 'src/lib/services/razorpay.ts';
+const code = `import Razorpay from 'razorpay';
 import crypto from 'crypto';
 
 export function getRazorpay(): Razorpay {
-  const key_id = process.env.RAZORPAY_KEY_ID || process.env.VITE_RAZORPAY_KEY_ID || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
-  const key_secret = process.env.RAZORPAY_KEY_SECRET || process.env.VITE_RAZORPAY_KEY_SECRET;
+  const key_id = process.env.VITE_RAZORPAY_KEY_ID || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || process.env.RAZORPAY_KEY_ID;
+  const key_secret = process.env.VITE_RAZORPAY_KEY_SECRET || process.env.RAZORPAY_KEY_SECRET;
 
   if (!key_id || !key_secret) {
     throw new Error('Razorpay keys (RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET) are missing from the environment variables.');
@@ -20,7 +22,7 @@ export function verifyRazorpaySignature(
   payment_id: string,
   signature: string
 ): boolean {
-  const secret = process.env.RAZORPAY_KEY_SECRET || process.env.VITE_RAZORPAY_KEY_SECRET;
+  const secret = process.env.VITE_RAZORPAY_KEY_SECRET || process.env.RAZORPAY_KEY_SECRET;
   if (!secret) return false;
 
   const generated_signature = crypto
@@ -45,3 +47,5 @@ export function verifyWebhookSignature(
 
   return expectedSignature === signature;
 }
+`;
+fs.writeFileSync(file, code);

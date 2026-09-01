@@ -31,7 +31,7 @@ const requireAuth = async (req: express.Request, res: express.Response, next: ex
 
 router.post('/create', requireAuth, async (req, res) => {
   try {
-    console.log("Razorpay key configured:", !!(process.env.VITE_RAZORPAY_KEY_ID || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || process.env.RAZORPAY_KEY_ID));
+    console.log("Razorpay key configured:", !!(process.env.RAZORPAY_KEY_ID || process.env.VITE_RAZORPAY_KEY_ID || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID));
     console.log("Razorpay secret configured:", !!process.env.RAZORPAY_KEY_SECRET);
     console.log("Supabase URL configured:", !!(process.env.VITE_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL));
     console.log("Supabase service key configured:", !!process.env.SUPABASE_SERVICE_ROLE_KEY);
@@ -91,7 +91,7 @@ router.post('/create', requireAuth, async (req, res) => {
     return res.json({
       success: true,
       subscriptionId: subscription.id,
-      keyId: process.env.VITE_RAZORPAY_KEY_ID || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || process.env.RAZORPAY_KEY_ID
+      keyId: process.env.RAZORPAY_KEY_ID || process.env.VITE_RAZORPAY_KEY_ID || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID
     });
 
   } catch (error: any) {
@@ -100,7 +100,7 @@ router.post('/create', requireAuth, async (req, res) => {
     return res.status(500).json({
       success: false,
       error: "Unable to create subscription",
-      details: error?.error?.description || error?.message || String(error)
+      details: error?.error?.description === "Authentication failed" ? "Razorpay Authentication failed. Your RAZORPAY_KEY_ID or RAZORPAY_KEY_SECRET are invalid. If you just updated them, you must restart your server or click Redeploy in Vercel for them to take effect." : (error?.error?.description || error?.message || String(error))
     });
   }
 });
