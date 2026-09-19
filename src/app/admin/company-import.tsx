@@ -18,16 +18,47 @@ interface ValidationRow extends ParsedCategoryRow {
   errors: string[];
 }
 
+const BANK_KEYS = ['bank name', 'bank', 'nbfc', 'lender', 'bank/nbfc', 'institution', 'financer'];
+const COMPANY_KEYS = ['company name', 'company', 'company_name', 'companyname', 'organization', 'employer', 'org', 'firm', 'corporate', 'client', 'name', 'companies'];
+const CATEGORY_KEYS = ['category', 'company category', 'cat', 'grade', 'classification', 'tier', 'class'];
+const SUB_CATEGORY_KEYS = ['sub category', 'subcategory', 'sub_category', 'sub cat', 'sub grade'];
+const ELIGIBILITY_KEYS = ['eligibility status', 'eligibilitystatus', 'status', 'eligibility', 'eligible'];
+const REMARKS_KEYS = ['remarks', 'remark', 'notes', 'comment', 'comments'];
+const POLICY_VERSION_KEYS = ['policy version', 'policyversion', 'version', 'policy'];
+const EFFECTIVE_DATE_KEYS = ['effective date', 'effectivedate', 'date', 'effective'];
+
 function getRowValue(row: Record<string, any>, possibleKeys: string[]): string {
-  for (const key of Object.keys(row)) {
-    const cleanKey = key.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+  if (!row) return '';
+  const keys = Object.keys(row);
+
+  // Pass 1: Exact clean match
+  for (const k of keys) {
+    const cleanK = k.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
     for (const target of possibleKeys) {
-      if (cleanKey === target.replace(/[^a-z0-9]/g, '')) {
-        const val = row[key];
-        return val !== undefined && val !== null ? String(val).trim() : '';
+      const cleanTarget = target.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (cleanK === cleanTarget) {
+        const val = row[k];
+        if (val !== undefined && val !== null && String(val).trim() !== '') {
+          return String(val).trim();
+        }
       }
     }
   }
+
+  // Pass 2: Partial/Inclusion match
+  for (const k of keys) {
+    const cleanK = k.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+    for (const target of possibleKeys) {
+      const cleanTarget = target.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (cleanK.length > 2 && cleanTarget.length > 2 && (cleanK.includes(cleanTarget) || cleanTarget.includes(cleanK))) {
+        const val = row[k];
+        if (val !== undefined && val !== null && String(val).trim() !== '') {
+          return String(val).trim();
+        }
+      }
+    }
+  }
+
   return '';
 }
 
@@ -90,23 +121,54 @@ export function CompanyImport() {
     
     try {
       const data = await file.arrayBuffer();
-      const workbook = XLSX.read(data);
+      const workbook = XLSX.read(data, { cellDates: true });
       const firstSheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[firstSheetName];
-      const json = XLSX.utils.sheet_to_json(worksheet, { defval: '' }) as any[];
 
-      const validated: ValidationRow[] = json.map((row, index) => {
-        const bankName = getRowValue(row, ['bank', 'bank name', 'bankname', 'nbfc', 'lender', 'bank/nbfc']);
-        const companyName = getRowValue(row, ['company name', 'company', 'companyname', 'company_name', 'organization', 'employer', 'company_name_list', 'companies']);
-        const category = getRowValue(row, ['category', 'company category', 'cat', 'grade', 'classification']);
-        const subCategory = getRowValue(row, ['sub category', 'subcategory', 'sub_category', 'sub cat']);
-        const eligibilityStatus = getRowValue(row, ['eligibility status', 'eligibilitystatus', 'status', 'eligibility']);
-        const remarks = getRowValue(row, ['remarks', 'remark', 'notes', 'comment', 'comments']);
-        const policyVersion = getRowValue(row, ['policy version', 'policyversion', 'version']);
-        const effectiveDate = getRowValue(row, ['effective date', 'effectivedate', 'date']);
+      // Convert sheet to 2D matrix to find header row index automatically
+      const matrix = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' }) as any[][];
+      
+      if (!matrix || matrix.length === 0) {
+        setGlobalError('The uploaded Excel file is empty.');
+        setIsParsing(false);
+        return;
+      }
+
+      // Detect header row index by inspecting first 10 rows
+      let headerRowIndex = 0;
+      for (let i = 0; i < Math.min(10, matrix.length); i++) {
+        const rowStr = matrix[i].map(c => String(c || '').toLowerCase()).join(' ');
+        if (
+          (rowStr.includes('bank') || rowStr.includes('nbfc') || rowStr.includes('lender')) &&
+          (rowStr.includes('company') || rowStr.includes('employer') || rowStr.includes('org') || rowStr.includes('name'))
+        ) {
+          headerRowIndex = i;
+          break;
+        }
+      }
+
+      const json = XLSX.utils.sheet_to_json(worksheet, { 
+        range: headerRowIndex, 
+        defval: '' 
+      }) as Record<string, any>[];
+
+      const validated: ValidationRow[] = [];
+
+      json.forEach((row, index) => {
+        const bankName = getRowValue(row, BANK_KEYS);
+        const companyName = getRowValue(row, COMPANY_KEYS);
+        const category = getRowValue(row, CATEGORY_KEYS);
+        const subCategory = getRowValue(row, SUB_CATEGORY_KEYS);
+        const eligibilityStatus = getRowValue(row, ELIGIBILITY_KEYS);
+        const remarks = getRowValue(row, REMARKS_KEYS);
+        const policyVersion = getRowValue(row, POLICY_VERSION_KEYS);
+        const effectiveDate = getRowValue(row, EFFECTIVE_DATE_KEYS);
+
+        // Skip blank rows
+        if (!bankName && !companyName && !category) return;
 
         const r: ValidationRow = {
-          rowNumber: index + 2, // 1 for header, 1 for 0-index
+          rowNumber: headerRowIndex + index + 2,
           bankName,
           companyName,
           category,
@@ -132,7 +194,7 @@ export function CompanyImport() {
         }
 
         r.isValid = r.errors.length === 0;
-        return r;
+        validated.push(r);
       });
 
       // Check for duplicates within the file itself
