@@ -3,12 +3,32 @@ import { Upload, FileUp, AlertTriangle, CheckCircle2, Download, Table as TableIc
 import * as XLSX from 'xlsx';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/src/components/ui/card';
 import { Button } from '@/src/components/ui/button';
-import { getBanks, executeImport, ParsedCategoryRow, normalizeCompanyName } from '@/src/lib/supabase/companies';
+import { 
+  getBanks, 
+  executeImport, 
+  ParsedCategoryRow, 
+  normalizeCompanyName, 
+  buildBankMap, 
+  normalizeBankKey 
+} from '@/src/lib/supabase/companies';
 
 interface ValidationRow extends ParsedCategoryRow {
   rowNumber: number;
   isValid: boolean;
   errors: string[];
+}
+
+function getRowValue(row: Record<string, any>, possibleKeys: string[]): string {
+  for (const key of Object.keys(row)) {
+    const cleanKey = key.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+    for (const target of possibleKeys) {
+      if (cleanKey === target.replace(/[^a-z0-9]/g, '')) {
+        const val = row[key];
+        return val !== undefined && val !== null ? String(val).trim() : '';
+      }
+    }
+  }
+  return '';
 }
 
 export function CompanyImport() {
@@ -29,10 +49,7 @@ export function CompanyImport() {
       try {
         const data = await getBanks();
         setBanks(data);
-        const bMap: Record<string, string> = {};
-        data.forEach(b => {
-          bMap[b.name.toLowerCase()] = b.id;
-        });
+        const bMap = buildBankMap(data);
         setBankMap(bMap);
       } catch (err) {
         console.error("Failed to load banks", err);
@@ -44,9 +61,9 @@ export function CompanyImport() {
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files?.[0];
     if (selected) {
-      // Validate file size (max 5MB)
-      if (selected.size > 5 * 1024 * 1024) {
-        setGlobalError('File size exceeds the maximum limit of 5MB.');
+      // Validate file size (max 50MB for large 70k+ datasets)
+      if (selected.size > 50 * 1024 * 1024) {
+        setGlobalError('File size exceeds the maximum limit of 50MB.');
         if (fileInputRef.current) fileInputRef.current.value = '';
         return;
       }
@@ -79,35 +96,50 @@ export function CompanyImport() {
       const json = XLSX.utils.sheet_to_json(worksheet, { defval: '' }) as any[];
 
       const validated: ValidationRow[] = json.map((row, index) => {
+        const bankName = getRowValue(row, ['bank', 'bank name', 'bankname', 'nbfc', 'lender', 'bank/nbfc']);
+        const companyName = getRowValue(row, ['company name', 'company', 'companyname', 'company_name', 'organization', 'employer', 'company_name_list', 'companies']);
+        const category = getRowValue(row, ['category', 'company category', 'cat', 'grade', 'classification']);
+        const subCategory = getRowValue(row, ['sub category', 'subcategory', 'sub_category', 'sub cat']);
+        const eligibilityStatus = getRowValue(row, ['eligibility status', 'eligibilitystatus', 'status', 'eligibility']);
+        const remarks = getRowValue(row, ['remarks', 'remark', 'notes', 'comment', 'comments']);
+        const policyVersion = getRowValue(row, ['policy version', 'policyversion', 'version']);
+        const effectiveDate = getRowValue(row, ['effective date', 'effectivedate', 'date']);
+
         const r: ValidationRow = {
           rowNumber: index + 2, // 1 for header, 1 for 0-index
-          bankName: String(row['Bank'] || '').trim(),
-          companyName: String(row['Company Name'] || '').trim(),
-          category: String(row['Category'] || '').trim(),
-          subCategory: String(row['Sub Category'] || '').trim(),
-          eligibilityStatus: String(row['Eligibility Status'] || '').trim(),
-          remarks: String(row['Remarks'] || '').trim(),
-          policyVersion: String(row['Policy Version'] || '').trim(),
-          effectiveDate: String(row['Effective Date'] || '').trim(),
+          bankName,
+          companyName,
+          category,
+          subCategory,
+          eligibilityStatus,
+          remarks,
+          policyVersion,
+          effectiveDate,
           isValid: true,
           errors: []
         };
 
-        if (!r.bankName) r.errors.push('Bank is required');
-        else if (!bankMap[r.bankName.toLowerCase()]) r.errors.push(`Bank "${r.bankName}" not found in system`);
-        
-        if (!r.companyName) r.errors.push('Company Name is required');
-        if (!r.category) r.errors.push('Category is required');
+        if (!r.bankName) {
+          r.errors.push('Bank is required');
+        }
+
+        if (!r.companyName) {
+          r.errors.push('Company Name is required');
+        }
+
+        if (!r.category) {
+          r.errors.push('Category is required');
+        }
 
         r.isValid = r.errors.length === 0;
         return r;
       });
 
       // Check for duplicates within the file itself
-      const seen = new Set();
+      const seen = new Set<string>();
       validated.forEach(r => {
         if (r.isValid) {
-          const key = `${r.bankName.toLowerCase()}_${normalizeCompanyName(r.companyName)}`;
+          const key = `${normalizeBankKey(r.bankName)}_${normalizeCompanyName(r.companyName)}`;
           if (seen.has(key)) {
             r.isValid = false;
             r.errors.push('Duplicate entry in this file');
@@ -124,6 +156,7 @@ export function CompanyImport() {
       setIsParsing(false);
     }
   };
+
 
   const handleImport = async () => {
     const validRows = parsedRows.filter(r => r.isValid);
